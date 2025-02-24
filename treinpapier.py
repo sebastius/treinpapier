@@ -41,7 +41,7 @@ def decodeschedule(data):
     for departure in data['payload']['departures']:
             if 'routeStations' in departure:
                 uic_codes = [station['uicCode'] for station in departure['routeStations']]
-                if '8400621' in uic_codes: # filtering for Utrecht Centraal
+                if '8400621' in uic_codes or (departure.get('direction') == 'Utrecht Centraal'):
                     plannedtijd_raw = departure['plannedDateTime']
                     plannedtijd = datetime.fromisoformat(plannedtijd_raw[:-5])
                     actueletijd_raw = departure['actualDateTime']
