@@ -3,11 +3,12 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 import textwrap
 import time
+
 import os
 
-# Get the absolute path of the script's directory
-script_dir = os.path.dirname(os.path.abspath(__file__))
-
+script_dir = os.path.dirname(os.path.abspath(__file__))  # Get the directory of the script
+mac = 'XXX'
+apip = "XXX" 
 
 # Vul hier je eigen API-sleutel in
 api_key = 'XXX'
@@ -25,7 +26,7 @@ Palet = [
 
 old_schedule = ['old']
 
-def gettraindata(station="utzl"): #getting station Utrecht Zuilen
+def gettraindata(station="utzl"):
     url = f"https://gateway.apiportal.ns.nl/reisinformatie-api/api/v2/departures?station={station}"
     response = requests.get(url, headers=headers)
 
@@ -38,24 +39,25 @@ def gettraindata(station="utzl"): #getting station Utrecht Zuilen
 
 def decodeschedule(data):
     train_schedule = []
-    for departure in data['payload']['departures']:
-            if 'routeStations' in departure:
-                uic_codes = [station['uicCode'] for station in departure['routeStations']]
-                if '8400621' in uic_codes or (departure.get('direction') == 'Utrecht Centraal'):
-                    plannedtijd_raw = departure['plannedDateTime']
-                    plannedtijd = datetime.fromisoformat(plannedtijd_raw[:-5])
-                    actueletijd_raw = departure['actualDateTime']
-                    actueletijd = datetime.fromisoformat(actueletijd_raw[:-5])
-                    verschil = int((actueletijd - plannedtijd).total_seconds() / 60)
-                    eindbestemming = departure['direction']
-                    treinsoort = departure['product']['longCategoryName']
-                    spoor = departure['plannedTrack']
-                    if (verschil != 0):
-                        vertraging = f"+{verschil}"
-                    else:
-                        vertraging = ""
-                    train_schedule.append({"plantijd": plannedtijd,"actueletijd": actueletijd, "vertraging": verschil, "spoor": spoor, "bestemming": eindbestemming})
-                    print(f"Om {plannedtijd.strftime('%H:%M')}{vertraging} vertrekt een {treinsoort} naar {eindbestemming} vanaf spoor {spoor}.")
+    if data is not None:
+        for departure in data['payload']['departures']:
+                if ('routeStations' in departure):
+                    uic_codes = [station['uicCode'] for station in departure['routeStations']]
+                    if '8400621' in uic_codes or (departure.get('direction') == 'Utrecht Centraal'):
+                        plannedtijd_raw = departure['plannedDateTime']
+                        plannedtijd = datetime.fromisoformat(plannedtijd_raw[:-5])
+                        actueletijd_raw = departure['actualDateTime']
+                        actueletijd = datetime.fromisoformat(actueletijd_raw[:-5])
+                        verschil = int((actueletijd - plannedtijd).total_seconds() / 60)
+                        eindbestemming = departure['direction']
+                        treinsoort = departure['product']['longCategoryName']
+                        spoor = departure['plannedTrack']
+                        if (verschil != 0):
+                            vertraging = f"+{verschil}"
+                        else:
+                            vertraging = ""
+                        train_schedule.append({"plantijd": plannedtijd,"actueletijd": actueletijd, "vertraging": verschil, "spoor": spoor, "bestemming": eindbestemming})
+                        print(f"Om {plannedtijd.strftime('%H:%M')}{vertraging} vertrekt een {treinsoort} naar {eindbestemming} vanaf spoor {spoor}.")
     return train_schedule
 
 def createimage(train_schedule):
@@ -63,30 +65,25 @@ def createimage(train_schedule):
     canvas = Image.new('RGB', (canvas_width, canvas_height), color=Palet[1])
     draw = ImageDraw.Draw(canvas)
 
-    font = ImageFont.truetype(os.path.join(script_dir,"B612Mono-Regular.ttf"), size=40)  # Use a TrueType font
-    titlefont = ImageFont.truetype(os.path.join(script_dir, "B612Mono-Regular.ttf"), size=20)  # Use a TrueType font
-    draw.text((0,0),"Trein Zuilen→Centraal", fill=Palet[0], font=titlefont)
+    font = ImageFont.truetype(os.path.join(script_dir,"nssans-regular.ttf"), size=40)  # Use a TrueType font
+    titlefont = ImageFont.truetype(os.path.join(script_dir,"nssans-bold.ttf"), size=20)  # Use a TrueType font
+    draw.text((0,0),"Trein Zuilen-Centraal", fill=Palet[0], font=titlefont)
    
     if not train_schedule:
-         draw.text((0,60),"geen treinen gepland", fill=Palet[2], font=titlefont)
+         draw.text((0,60),"geen treinen gevonden.", fill=Palet[2], font=titlefont)
        
     for i, train in enumerate(train_schedule):
         if i == 3:  # Stop after the third item
             break
-        draw.text((0,15+(i*45)),train['plantijd'].strftime('%H:%M'), fill=Palet[0], font=font)
+        draw.text((0,20+(i*45)),train['plantijd'].strftime('%H:%M'), fill=Palet[0], font=font)
         if (train['vertraging']!=0):
             draw.text((140,i*45),f"+{train['vertraging']}", fill=Palet[2], font=font)
     canvas.save(os.path.join(script_dir,'plaatje.jpg'), 'JPEG', quality=100)
-
-
-
     print('image generated')
 
 def uploadimage(filename, server, tag):
  # Save the image as JPEG with maximum quality
     image_path = os.path.join(script_dir,'plaatje.jpg')
-    mac = '0000032CA0653E18'
-    apip = "192.168.1.162" 
     dither = 0
     # Prepare the HTTP POST request
     url = "http://" + apip + "/imgupload"
@@ -104,8 +101,6 @@ def uploadimage(filename, server, tag):
             print(f"{mac} Failed to upload the image.")
     except:
         print(f"{mac} Failed to upload the image.")
-
-
     print('succesfully uploaded')
 
 try:
